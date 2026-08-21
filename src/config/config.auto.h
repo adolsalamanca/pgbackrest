@@ -145,7 +145,7 @@ Option constants
 #define CFGOPT_VERBOSE                                              "verbose"
 #define CFGOPT_VERSION                                              "version"
 
-#define CFG_OPTION_TOTAL                                            200
+#define CFG_OPTION_TOTAL                                            203
 
 /***********************************************************************************************************************************
 Option value constants
@@ -313,6 +313,9 @@ Option value constants
 #define CFGOPTVAL_REPO_GCS_KEY_TYPE_AUTO                            2
 #define CFGOPTVAL_REPO_GCS_KEY_TYPE_AUTO_STRID                      STRID5S("auto", 2, 0x7d2a16)
 #define CFGOPTVAL_REPO_GCS_KEY_TYPE_AUTO_Z                          "auto"
+#define CFGOPTVAL_REPO_GCS_KEY_TYPE_WEB_ID                          3
+#define CFGOPTVAL_REPO_GCS_KEY_TYPE_WEB_ID_STRID                    STRID5S("web-id", 3, 0x89d88b78)
+#define CFGOPTVAL_REPO_GCS_KEY_TYPE_WEB_ID_Z                        "web-id"
 
 #define CFGOPTVAL_REPO_HOST_TYPE_SSH                                STRID5("ssh", 0x22730)
 #define CFGOPTVAL_REPO_HOST_TYPE_SSH_Z                              "ssh"
@@ -591,7 +594,10 @@ typedef enum
     cfgOptRepoGcsEndpoint,
     cfgOptRepoGcsKey,
     cfgOptRepoGcsKeyType,
+    cfgOptRepoGcsStsHost,
     cfgOptRepoGcsUserProject,
+    cfgOptRepoGcsWebIdAudience,
+    cfgOptRepoGcsWebIdTokenFile,
     cfgOptRepoHardlink,
     cfgOptRepoHost,
     cfgOptRepoHostCaFile,

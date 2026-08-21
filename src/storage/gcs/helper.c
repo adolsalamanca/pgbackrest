@@ -25,11 +25,13 @@ storageGcsHelper(const unsigned int repoIdx, const bool write, StoragePathExpres
     Storage *const result = storageGcsNew(
         cfgOptionIdxStr(cfgOptRepoPath, repoIdx), write, storageRepoTargetTime(), pathExpressionCallback,
         cfgOptionIdxStr(cfgOptRepoGcsBucket, repoIdx), (StorageGcsKeyType)cfgOptionIdxSeq(cfgOptRepoGcsKeyType, repoIdx),
-        cfgOptionIdxStrNull(cfgOptRepoGcsKey, repoIdx), (size_t)cfgOptionIdxUInt64(cfgOptRepoStorageUploadChunkSize, repoIdx),
-        cfgOptionIdxKvNull(cfgOptRepoStorageTag, repoIdx), cfgOptionIdxStr(cfgOptRepoGcsEndpoint, repoIdx), ioTimeoutMs(),
-        cfgOptionIdxBool(cfgOptRepoStorageVerifyTls, repoIdx), cfgOptionIdxStrNull(cfgOptRepoStorageCaFile, repoIdx),
-        cfgOptionIdxStrNull(cfgOptRepoStorageCaPath, repoIdx), cfgOptionIdxStrNull(cfgOptRepoGcsUserProject, repoIdx),
-        cfgOptionIdxUInt(cfgOptRepoStoragePrefetch, repoIdx), cfgOptionIdxUInt64(cfgOptRepoStorageReadOver, repoIdx));
+        cfgOptionIdxStrNull(cfgOptRepoGcsKey, repoIdx), cfgOptionIdxStrNull(cfgOptRepoGcsWebIdTokenFile, repoIdx),
+        cfgOptionIdxStrNull(cfgOptRepoGcsWebIdAudience, repoIdx), cfgOptionIdxStrNull(cfgOptRepoGcsStsHost, repoIdx),
+        (size_t)cfgOptionIdxUInt64(cfgOptRepoStorageUploadChunkSize, repoIdx), cfgOptionIdxKvNull(cfgOptRepoStorageTag, repoIdx),
+        cfgOptionIdxStr(cfgOptRepoGcsEndpoint, repoIdx), ioTimeoutMs(), cfgOptionIdxBool(cfgOptRepoStorageVerifyTls, repoIdx),
+        cfgOptionIdxStrNull(cfgOptRepoStorageCaFile, repoIdx), cfgOptionIdxStrNull(cfgOptRepoStorageCaPath, repoIdx),
+        cfgOptionIdxStrNull(cfgOptRepoGcsUserProject, repoIdx), cfgOptionIdxUInt(cfgOptRepoStoragePrefetch, repoIdx),
+        cfgOptionIdxUInt64(cfgOptRepoStorageReadOver, repoIdx));
 
     FUNCTION_LOG_RETURN(STORAGE, result);
 }

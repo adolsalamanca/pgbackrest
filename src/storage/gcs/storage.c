@@ -103,8 +103,10 @@ struct StorageGcs
 
     StorageGcsKeyType keyType;                                      // Auth key type
     const String *key;                                              // Key (value depends on key type)
+    const String *webIdTokenFile;                                   // Web identity token file
+    const String *webIdAudience;                                    // Web identity provider audience
     String *token;                                                  // Token
-    time_t tokenTimeExpire;                                         // Token expiration time (if service auth)
+    time_t tokenTimeExpire;                                         // Token expiration time (if renewable auth)
     HttpUrl *authUrl;                                               // URL for authentication server
     HttpClient *authClient;                                         // Client to service auth requests
 };
@@ -295,6 +297,89 @@ storageGcsAuthService(StorageGcs *const this, const time_t timeBegin)
 }
 
 /***********************************************************************************************************************************
+Exchange a web identity token for an access token
+***********************************************************************************************************************************/
+static StorageGcsAuthTokenResult
+storageGcsAuthWebId(StorageGcs *const this, const time_t timeBegin)
+{
+    FUNCTION_TEST_BEGIN();
+        FUNCTION_TEST_PARAM(STORAGE_GCS, this);
+        FUNCTION_TEST_PARAM(TIME, timeBegin);
+    FUNCTION_TEST_END();
+
+    FUNCTION_AUDIT_STRUCT();
+
+    ASSERT(this != NULL);
+    ASSERT(timeBegin > 0);
+
+    StorageGcsAuthTokenResult result = {0};
+
+    MEM_CONTEXT_TEMP_BEGIN()
+    {
+        // Reload on every exchange because the projected token may rotate
+        const String *const subjectToken =
+            strTrim(strNewBuf(storageGetP(storageNewReadP(storagePosixNewP(FSLASH_STR), this->webIdTokenFile))));
+        CHECK(FormatError, !strEmpty(subjectToken), "web identity token is empty");
+
+        const String *const scope = strNewFmt(
+            "https://www.googleapis.com/auth/devstorage.read%s", this->write ? "_write" : "_only");
+
+        String *const content = strNewFmt(
+            "grant_type=%s&audience=%s&requested_token_type=%s&subject_token=%s&subject_token_type=%s&scope=%s",
+            strZ(httpUriEncode(STRDEF("urn:ietf:params:oauth:grant-type:token-exchange"), false)),
+            strZ(httpUriEncode(this->webIdAudience, false)),
+            strZ(httpUriEncode(STRDEF("urn:ietf:params:oauth:token-type:access_token"), false)),
+            strZ(httpUriEncode(subjectToken, false)),
+            strZ(httpUriEncode(STRDEF("urn:ietf:params:oauth:token-type:jwt"), false)),
+            strZ(httpUriEncode(scope, false)));
+
+        HttpHeader *const header = httpHeaderNew(NULL);
+        httpHeaderAdd(header, HTTP_HEADER_HOST_STR, httpUrlHost(this->authUrl));
+        httpHeaderAdd(header, HTTP_HEADER_CONTENT_TYPE_STR, HTTP_HEADER_CONTENT_TYPE_APP_FORM_URL_STR);
+        httpHeaderAdd(header, HTTP_HEADER_CONTENT_LENGTH_STR, strNewFmt("%zu", strSize(content)));
+
+        HttpRequest *const request = httpRequestNewP(
+            this->authClient, HTTP_VERB_POST_STR, httpUrlPath(this->authUrl), .header = header, .content = BUFSTR(content));
+
+        TRY_BEGIN()
+        {
+            MEM_CONTEXT_PRIOR_BEGIN()
+            {
+                result = storageGcsAuthToken(request, timeBegin);
+            }
+            MEM_CONTEXT_PRIOR_END();
+        }
+        CATCH_ANY()
+        {
+            // An identity provider may echo the subject token in an error description
+            if (strstr(errorMessage(), strZ(subjectToken)) != NULL)
+            {
+                const ErrorType *const errorTypeLocal = errorType();
+                String *const error = strNew();
+                const char *errorPos = errorMessage();
+                const char *subjectTokenInError;
+
+                while ((subjectTokenInError = strstr(errorPos, strZ(subjectToken))) != NULL)
+                {
+                    strCatZN(error, errorPos, (size_t)(subjectTokenInError - errorPos));
+                    strCatZ(error, "<redacted>");
+                    errorPos = subjectTokenInError + strSize(subjectToken);
+                }
+
+                strCatZ(error, errorPos);
+                THROWP(errorTypeLocal, strZ(error));
+            }
+
+            RETHROW();
+        }
+        TRY_END();
+    }
+    MEM_CONTEXT_TEMP_END();
+
+    FUNCTION_TEST_RETURN_TYPE(StorageGcsAuthTokenResult, result);
+}
+
+/***********************************************************************************************************************************
 Get authentication token automatically for instances running in GCE.
 
 Based on the documentation at https://cloud.google.com/compute/docs/access/create-enable-service-accounts-for-instances#applications
@@ -355,16 +440,23 @@ storageGcsAuth(StorageGcs *const this, HttpHeader *const httpHeader)
         // Get the token if it was not supplied by the user
         if (this->keyType != storageGcsKeyTypeToken)
         {
-            ASSERT(this->keyType == storageGcsKeyTypeAuto || this->keyType == storageGcsKeyTypeService);
+            ASSERT(
+                this->keyType == storageGcsKeyTypeAuto || this->keyType == storageGcsKeyTypeService ||
+                this->keyType == storageGcsKeyTypeWebId);
 
             const time_t timeBegin = time(NULL);
 
             // If the current token has expired then request a new one
             if (timeBegin >= this->tokenTimeExpire)
             {
-                const StorageGcsAuthTokenResult tokenResult =
-                    this->keyType == storageGcsKeyTypeAuto ?
-                        storageGcsAuthAuto(this, timeBegin) : storageGcsAuthService(this, timeBegin);
+                StorageGcsAuthTokenResult tokenResult;
+
+                if (this->keyType == storageGcsKeyTypeAuto)
+                    tokenResult = storageGcsAuthAuto(this, timeBegin);
+                else if (this->keyType == storageGcsKeyTypeWebId)
+                    tokenResult = storageGcsAuthWebId(this, timeBegin);
+                else
+                    tokenResult = storageGcsAuthService(this, timeBegin);
 
                 MEM_CONTEXT_OBJ_BEGIN(this)
                 {
@@ -1182,10 +1274,10 @@ static const StorageInterface storageInterfaceGcs =
 FN_EXTERN Storage *
 storageGcsNew(
     const String *const path, const bool write, const time_t targetTime, StoragePathExpressionCallback pathExpressionFunction,
-    const String *const bucket, const StorageGcsKeyType keyType, const String *const key, const size_t chunkSize,
-    const KeyValue *const tag, const String *const endpoint, const TimeMSec timeout, const bool verifyPeer,
-    const String *const caFile, const String *const caPath, const String *const userProject, const unsigned int prefetch,
-    const uint64_t readOver)
+    const String *const bucket, const StorageGcsKeyType keyType, const String *const key, const String *const webIdTokenFile,
+    const String *const webIdAudience, const String *const stsHost, const size_t chunkSize, const KeyValue *const tag,
+    const String *const endpoint, const TimeMSec timeout, const bool verifyPeer, const String *const caFile,
+    const String *const caPath, const String *const userProject, const unsigned int prefetch, const uint64_t readOver)
 {
     FUNCTION_LOG_BEGIN(logLevelDebug);
         FUNCTION_LOG_PARAM(STRING, path);
@@ -1195,6 +1287,9 @@ storageGcsNew(
         FUNCTION_LOG_PARAM(STRING, bucket);
         FUNCTION_LOG_PARAM(ENUM, keyType);
         FUNCTION_TEST_PARAM(STRING, key);
+        FUNCTION_TEST_PARAM(STRING, webIdTokenFile);
+        FUNCTION_TEST_PARAM(STRING, webIdAudience);
+        FUNCTION_LOG_PARAM(STRING, stsHost);
         FUNCTION_LOG_PARAM(SIZE, chunkSize);
         FUNCTION_LOG_PARAM(KEY_VALUE, tag);
         FUNCTION_LOG_PARAM(STRING, endpoint);
@@ -1209,7 +1304,7 @@ storageGcsNew(
 
     ASSERT(path != NULL);
     ASSERT(bucket != NULL);
-    ASSERT(keyType == storageGcsKeyTypeAuto || key != NULL);
+    ASSERT(keyType == storageGcsKeyTypeAuto || keyType == storageGcsKeyTypeWebId || key != NULL);
     ASSERT(chunkSize != 0);
 
     OBJ_NEW_BEGIN(StorageGcs, .childQty = MEM_CONTEXT_QTY_MAX)
@@ -1293,6 +1388,25 @@ storageGcsNew(
             case storageGcsKeyTypeToken:
                 this->token = strDup(key);
                 break;
+
+            // Exchange a web identity token for an access token
+            case storageGcsKeyTypeWebId:
+            {
+                ASSERT(webIdTokenFile != NULL);
+                ASSERT(webIdAudience != NULL);
+                ASSERT(stsHost != NULL);
+
+                this->webIdTokenFile = strDup(webIdTokenFile);
+                this->webIdAudience = strDup(webIdAudience);
+                this->authUrl = httpUrlNewParseP(strNewFmt("%s/v1/token", strZ(stsHost)), .type = httpProtocolTypeHttps);
+                this->authClient = httpClientNew(
+                    tlsClientNewP(
+                        sckClientNew(httpUrlHost(this->authUrl), httpUrlPort(this->authUrl), timeout, timeout),
+                        httpUrlHost(this->authUrl), timeout, timeout, verifyPeer, .caFile = caFile, .caPath = caPath),
+                    timeout);
+
+                break;
+            }
         }
 
         // Parse the endpoint to extract the host, port, and protocol

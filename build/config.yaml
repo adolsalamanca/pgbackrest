@@ -2325,6 +2325,7 @@ option:
       - service
       - token
       - auto
+      - web-id
     command: repo-type
     depend:
       option: repo-type
@@ -2343,12 +2344,34 @@ option:
         - service
         - token
 
+  repo-gcs-sts-host:
+    inherit: repo-gcs-bucket
+    default: sts.googleapis.com
+    depend:
+      option: repo-gcs-key-type
+      list:
+        - web-id
+
   repo-gcs-user-project:
     section: global
     type: string
     group: repo
     required: false
     command: repo-type
+
+  repo-gcs-web-id-audience:
+    inherit: repo-gcs-bucket
+    depend:
+      option: repo-gcs-key-type
+      list:
+        - web-id
+
+  repo-gcs-web-id-token-file:
+    inherit: repo-gcs-bucket
+    depend:
+      option: repo-gcs-key-type
+      list:
+        - web-id
 
   # Repository S3 storage options
   #---------------------------------------------------------------------------------------------------------------------------------

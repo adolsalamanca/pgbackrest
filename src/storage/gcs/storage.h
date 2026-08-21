@@ -19,6 +19,7 @@ typedef enum
     storageGcsKeyTypeService,
     storageGcsKeyTypeToken,
     storageGcsKeyTypeAuto,
+    storageGcsKeyTypeWebId,
 } StorageGcsKeyType;
 
 /***********************************************************************************************************************************
@@ -26,8 +27,8 @@ Constructors
 ***********************************************************************************************************************************/
 FN_EXTERN Storage *storageGcsNew(
     const String *path, bool write, time_t targetTime, StoragePathExpressionCallback pathExpressionFunction, const String *bucket,
-    StorageGcsKeyType keyType, const String *key, size_t blockSize, const KeyValue *tag, const String *endpoint, TimeMSec timeout,
-    bool verifyPeer, const String *caFile, const String *caPath, const String *userProject, unsigned int prefetch,
-    uint64_t readOver);
+    StorageGcsKeyType keyType, const String *key, const String *webIdTokenFile, const String *webIdAudience,
+    const String *stsHost, size_t blockSize, const KeyValue *tag, const String *endpoint, TimeMSec timeout, bool verifyPeer,
+    const String *caFile, const String *caPath, const String *userProject, unsigned int prefetch, uint64_t readOver);
 
 #endif
