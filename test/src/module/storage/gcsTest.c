@@ -89,24 +89,6 @@ testAuthRequest(const Storage *const storage)
     return result;
 }
 
-static void
-testWebIdRequest(IoWrite *const write, const char *const content)
-{
-    hrnServerScriptAccept(write);
-    hrnServerScriptExpectZ(
-        write,
-        strZ(
-            strNewFmt(
-                "POST /v1/token HTTP/1.1\r\n"
-                "user-agent:" PROJECT_NAME "/" PROJECT_VERSION "\r\n"
-                "content-length:%zu\r\n"
-                "content-type:application/x-www-form-urlencoded\r\n"
-                "host:%s\r\n"
-                "\r\n"
-                "%s",
-                strlen(content), strZ(hrnServerHost()), content)));
-}
-
 /***********************************************************************************************************************************
 Helper to build test requests
 ***********************************************************************************************************************************/
@@ -441,7 +423,10 @@ testRun(void)
                     "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt&"
                     "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only";
 
-                testWebIdRequest(sts, content);
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = content);
                 testResponseP(sts, .content = "{\"access_token\":\"federated\",\"token_type\":\"Bearer\",\"expires_in\":1}");
                 hrnServerScriptClose(sts);
 
@@ -464,7 +449,10 @@ testRun(void)
                     "subject_token=rotated%20jwt&"
                     "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt&"
                     "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only";
-                testWebIdRequest(sts, rotatedContent);
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
                 testResponseP(sts, .content = "{\"access_token\":\"renewed\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
                 hrnServerScriptClose(sts);
 
@@ -476,9 +464,12 @@ testRun(void)
 
                 // Non-200 STS errors use the standard GCS auth error fields
                 ((StorageGcs *)storageDriver(storage))->tokenTimeExpire = 0;
-                testWebIdRequest(sts, rotatedContent);
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
                 testResponseP(
-                    sts, .code = 400,
+                    sts, .code = 400, .header = "content-type:application/json",
                     .content = "{\"error\":\"invalid_grant\",\"error_description\":\"subject token rejected\"}");
                 hrnServerScriptClose(sts);
                 TEST_ERROR(
@@ -486,45 +477,66 @@ testRun(void)
                     "unable to get authentication token: [invalid_grant] subject token rejected");
 
                 // Missing required token response fields fail cleanly
-                testWebIdRequest(sts, rotatedContent);
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
                 testResponseP(sts, .content = "{\"token_type\":\"Bearer\",\"expires_in\":3600}");
                 hrnServerScriptClose(sts);
                 TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing4"), .ignoreMissing = true)), FormatError,
                     "access token missing");
 
-                testWebIdRequest(sts, rotatedContent);
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
                 testResponseP(sts, .content = "{\"access_token\":\"token\",\"token_type\":\"Bearer\"}");
                 hrnServerScriptClose(sts);
                 TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing5"), .ignoreMissing = true)), FormatError,
                     "expiry missing");
 
-                // The subject token is redacted even if the STS error echoes it
-                testWebIdRequest(sts, rotatedContent);
-                testResponseP(
-                    sts, .code = 400,
-                    .content =
-                        "{\"error\":\"invalid_grant\",\"error_description\":\"rotated jwt rejected: rotated jwt\"}");
+                // A non-JSON error response, e.g. from a misconfigured authentication server, reports the HTTP error directly
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
+                testResponseP(sts, .code = 400, .header = "content-type:text/html", .content = "<html>error</html>");
                 hrnServerScriptClose(sts);
+                TEST_ERROR_FMT(
+                    storageGetP(storageNewReadP(storage, STRDEF("missing6"), .ignoreMissing = true)), ProtocolError,
+                    "HTTP request failed with 400:\n"
+                    "*** Path/Query ***:\n"
+                    "POST /v1/token\n"
+                    "*** Request Headers ***:\n"
+                    "content-length: %zu\n"
+                    "content-type: application/x-www-form-urlencoded\n"
+                    "host: %s\n"
+                    "*** Response Headers ***:\n"
+                    "content-length: 18\n"
+                    "content-type: text/html\n"
+                    "*** Response Content ***:\n"
+                    "<html>error</html>",
+                    strlen(rotatedContent), strZ(hrnServerHost()));
 
-                bool errorCaught = false;
-
-                TRY_BEGIN()
-                {
-                    storageGetP(storageNewReadP(storage, STRDEF("missing6"), .ignoreMissing = true));
-                }
-                CATCH_ANY()
-                {
-                    errorCaught = true;
-                    TEST_RESULT_Z(
-                        errorMessage(),
-                        "unable to get authentication token: [invalid_grant] <redacted> rejected: <redacted>",
-                        "all instances of subject token are redacted");
-                }
-                TRY_END();
-
-                TEST_RESULT_BOOL(errorCaught, true, "exchange error caught");
+                // An error response without a content-type is also reported directly
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
+                testResponseP(sts, .code = 400);
+                hrnServerScriptClose(sts);
+                TEST_ERROR_FMT(
+                    storageGetP(storageNewReadP(storage, STRDEF("missing7"), .ignoreMissing = true)), ProtocolError,
+                    "HTTP request failed with 400:\n"
+                    "*** Path/Query ***:\n"
+                    "POST /v1/token\n"
+                    "*** Request Headers ***:\n"
+                    "content-length: %zu\n"
+                    "content-type: application/x-www-form-urlencoded\n"
+                    "host: %s",
+                    strlen(rotatedContent), strZ(hrnServerHost()));
 
                 // Write-mode storage requests the read_write scope
                 const char *const writeContent =
@@ -536,7 +548,10 @@ testRun(void)
                     "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt&"
                     "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_write";
 
-                testWebIdRequest(sts, writeContent);
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = writeContent);
                 testResponseP(sts, .content = "{\"access_token\":\"writer\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
                 hrnServerScriptClose(sts);
 

@@ -139,7 +139,15 @@ storageGcsAuthToken(HttpRequest *const request, const time_t timeBegin)
     MEM_CONTEXT_TEMP_BEGIN()
     {
         // Get the response
-        const KeyValue *const kvResponse = varKv(jsonToVar(strNewBuf(httpResponseContent(httpRequestResponse(request, true)))));
+        HttpResponse *const response = httpRequestResponse(request, true);
+        const String *const contentType = httpHeaderGet(httpResponseHeader(response), HTTP_HEADER_CONTENT_TYPE_STR);
+
+        // Error when the response is not OK and is not JSON, e.g. an HTML error page returned by a misconfigured authentication
+        // server. Otherwise the JSON error fields checked below provide a more detailed report of the error.
+        if (!httpResponseCodeOk(response) && (contentType == NULL || !strBeginsWithZ(contentType, "application/json")))
+            httpRequestError(request, response);
+
+        const KeyValue *const kvResponse = varKv(jsonToVar(strNewBuf(httpResponseContent(response))));
 
         // Check for an error
         const String *const error = varStr(kvGet(kvResponse, GCS_JSON_ERROR_VAR));
@@ -343,38 +351,13 @@ storageGcsAuthWebId(StorageGcs *const this, const time_t timeBegin)
         HttpRequest *const request = httpRequestNewP(
             this->authClient, HTTP_VERB_POST_STR, httpUrlPath(this->authUrl), .header = header, .content = BUFSTR(content));
 
-        TRY_BEGIN()
+        // Note that the subject token is only ever present in the request content, which is never included in logs or errors.
+        // This is equivalent to the S3 web-id behavior where the token is redacted from the query.
+        MEM_CONTEXT_PRIOR_BEGIN()
         {
-            MEM_CONTEXT_PRIOR_BEGIN()
-            {
-                result = storageGcsAuthToken(request, timeBegin);
-            }
-            MEM_CONTEXT_PRIOR_END();
+            result = storageGcsAuthToken(request, timeBegin);
         }
-        CATCH_ANY()
-        {
-            // An identity provider may echo the subject token in an error description
-            if (strstr(errorMessage(), strZ(subjectToken)) != NULL)
-            {
-                const ErrorType *const errorTypeLocal = errorType();
-                String *const error = strNew();
-                const char *errorPos = errorMessage();
-                const char *subjectTokenInError;
-
-                while ((subjectTokenInError = strstr(errorPos, strZ(subjectToken))) != NULL)
-                {
-                    strCatZN(error, errorPos, (size_t)(subjectTokenInError - errorPos));
-                    strCatZ(error, "<redacted>");
-                    errorPos = subjectTokenInError + strSize(subjectToken);
-                }
-
-                strCatZ(error, errorPos);
-                THROWP(errorTypeLocal, strZ(error));
-            }
-
-            RETHROW();
-        }
-        TRY_END();
+        MEM_CONTEXT_PRIOR_END();
     }
     MEM_CONTEXT_TEMP_END();
 
