@@ -297,7 +297,9 @@ storageGcsAuthService(StorageGcs *const this, const time_t timeBegin)
 }
 
 /***********************************************************************************************************************************
-Exchange a web identity token for an access token
+Exchange a web identity token for an access token using the STS token exchange API
+(https://docs.cloud.google.com/iam/docs/reference/sts/rest/v1/TopLevel/token). The resulting token authenticates the federated
+principal directly, https://docs.cloud.google.com/iam/docs/workload-identity-federation#direct-resource-access
 ***********************************************************************************************************************************/
 static StorageGcsAuthTokenResult
 storageGcsAuthWebId(StorageGcs *const this, const time_t timeBegin)
