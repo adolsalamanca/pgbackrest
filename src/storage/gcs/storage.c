@@ -55,10 +55,14 @@ STRING_STATIC(GCS_QUERY_USER_PROJECT_STR,                           "userProject
 JSON tokens
 ***********************************************************************************************************************************/
 VARIANT_STRDEF_STATIC(GCS_JSON_ACCESS_TOKEN_VAR,                    "access_token");
+VARIANT_STRDEF_STATIC(GCS_JSON_AUDIENCE_VAR,                        "audience");
 VARIANT_STRDEF_STATIC(GCS_JSON_CLIENT_EMAIL_VAR,                    "client_email");
+VARIANT_STRDEF_STATIC(GCS_JSON_CREDENTIAL_SOURCE_VAR,               "credential_source");
 VARIANT_STRDEF_STATIC(GCS_JSON_ERROR_VAR,                           "error");
 VARIANT_STRDEF_STATIC(GCS_JSON_ERROR_DESCRIPTION_VAR,               "error_description");
 VARIANT_STRDEF_STATIC(GCS_JSON_EXPIRES_IN_VAR,                      "expires_in");
+VARIANT_STRDEF_STATIC(GCS_JSON_FILE_VAR,                            "file");
+VARIANT_STRDEF_STATIC(GCS_JSON_FORMAT_VAR,                          "format");
 #define GCS_JSON_ITEMS                                              "items"
 VARIANT_STRDEF_STATIC(GCS_JSON_ITEMS_VAR,                           GCS_JSON_ITEMS);
 VARIANT_STRDEF_EXTERN(GCS_JSON_GENERATION_VAR,                      GCS_JSON_GENERATION);
@@ -69,9 +73,12 @@ VARIANT_STRDEF_STATIC(GCS_JSON_NEXT_PAGE_TOKEN_VAR,                 GCS_JSON_NEX
 #define GCS_JSON_PREFIXES                                           "prefixes"
 VARIANT_STRDEF_STATIC(GCS_JSON_PREFIXES_VAR,                        GCS_JSON_PREFIXES);
 VARIANT_STRDEF_STATIC(GCS_JSON_PRIVATE_KEY_VAR,                     "private_key");
+VARIANT_STRDEF_STATIC(GCS_JSON_SA_IMPERSONATION_URL_VAR,            "service_account_impersonation_url");
 VARIANT_STRDEF_EXTERN(GCS_JSON_SIZE_VAR,                            GCS_JSON_SIZE);
 VARIANT_STRDEF_STATIC(GCS_JSON_TOKEN_TYPE_VAR,                      "token_type");
 VARIANT_STRDEF_STATIC(GCS_JSON_TOKEN_URI_VAR,                       "token_uri");
+VARIANT_STRDEF_STATIC(GCS_JSON_TOKEN_URL_VAR,                       "token_url");
+VARIANT_STRDEF_STATIC(GCS_JSON_TYPE_VAR,                            "type");
 #define GCS_JSON_UPDATED                                            "updated"
 VARIANT_STRDEF_STATIC(GCS_JSON_UPDATED_VAR,                         GCS_JSON_UPDATED);
 
@@ -150,13 +157,22 @@ storageGcsAuthToken(HttpRequest *const request, const time_t timeBegin)
         const KeyValue *const kvResponse = varKv(jsonToVar(strNewBuf(httpResponseContent(response))));
 
         // Check for an error
-        const String *const error = varStr(kvGet(kvResponse, GCS_JSON_ERROR_VAR));
+        const Variant *const error = kvGet(kvResponse, GCS_JSON_ERROR_VAR);
 
         if (error != NULL)
         {
-            THROW_FMT(
-                ProtocolError, "unable to get authentication token: [%s] %s", strZ(error),
-                strZNull(varStr(kvGet(kvResponse, GCS_JSON_ERROR_DESCRIPTION_VAR))));
+            // Report flat OAuth-style errors, e.g. {"error":"invalid_grant","error_description":"..."}
+            if (varType(error) == varTypeString)
+            {
+                const Variant *const description = kvGet(kvResponse, GCS_JSON_ERROR_DESCRIPTION_VAR);
+
+                THROW_FMT(
+                    ProtocolError, "unable to get authentication token: [%s] %s", strZ(varStr(error)),
+                    description != NULL && varType(description) == varTypeString ? strZ(varStr(description)) : "null");
+            }
+
+            // Some errors are nested objects, e.g. {"error":{"code":403,...}}, so report the entire response
+            httpRequestError(request, response);
         }
 
         MEM_CONTEXT_PRIOR_BEGIN()
@@ -1259,10 +1275,10 @@ static const StorageInterface storageInterfaceGcs =
 FN_EXTERN Storage *
 storageGcsNew(
     const String *const path, const bool write, const time_t targetTime, StoragePathExpressionCallback pathExpressionFunction,
-    const String *const bucket, const StorageGcsKeyType keyType, const String *const key, const String *const webIdTokenFile,
-    const String *const webIdAudience, const String *const stsHost, const size_t chunkSize, const KeyValue *const tag,
-    const String *const endpoint, const TimeMSec timeout, const bool verifyPeer, const String *const caFile,
-    const String *const caPath, const String *const userProject, const unsigned int prefetch, const uint64_t readOver)
+    const String *const bucket, const StorageGcsKeyType keyType, const String *const key, const size_t chunkSize,
+    const KeyValue *const tag, const String *const endpoint, const TimeMSec timeout, const bool verifyPeer,
+    const String *const caFile, const String *const caPath, const String *const userProject, const unsigned int prefetch,
+    const uint64_t readOver)
 {
     FUNCTION_LOG_BEGIN(logLevelDebug);
         FUNCTION_LOG_PARAM(STRING, path);
@@ -1272,9 +1288,6 @@ storageGcsNew(
         FUNCTION_LOG_PARAM(STRING, bucket);
         FUNCTION_LOG_PARAM(ENUM, keyType);
         FUNCTION_TEST_PARAM(STRING, key);
-        FUNCTION_TEST_PARAM(STRING, webIdTokenFile);
-        FUNCTION_TEST_PARAM(STRING, webIdAudience);
-        FUNCTION_LOG_PARAM(STRING, stsHost);
         FUNCTION_LOG_PARAM(SIZE, chunkSize);
         FUNCTION_LOG_PARAM(KEY_VALUE, tag);
         FUNCTION_LOG_PARAM(STRING, endpoint);
@@ -1289,7 +1302,7 @@ storageGcsNew(
 
     ASSERT(path != NULL);
     ASSERT(bucket != NULL);
-    ASSERT(keyType == storageGcsKeyTypeAuto || keyType == storageGcsKeyTypeWebId || key != NULL);
+    ASSERT(keyType == storageGcsKeyTypeAuto || key != NULL);
     ASSERT(chunkSize != 0);
 
     OBJ_NEW_BEGIN(StorageGcs, .childQty = MEM_CONTEXT_QTY_MAX)
@@ -1374,16 +1387,47 @@ storageGcsNew(
                 this->token = strDup(key);
                 break;
 
-            // Exchange a web identity token for an access token
+            // Read data from an external account credential file, https://google.aip.dev/auth/4117. This is the file generated by
+            // gcloud iam workload-identity-pools create-cred-config and contains the audience, token url, and token file.
             case storageGcsKeyTypeWebId:
             {
-                ASSERT(webIdTokenFile != NULL);
-                ASSERT(webIdAudience != NULL);
-                ASSERT(stsHost != NULL);
+                ASSERT(key != NULL);
 
-                this->webIdTokenFile = strDup(webIdTokenFile);
-                this->webIdAudience = strDup(webIdAudience);
-                this->authUrl = httpUrlNewParseP(strNewFmt("%s/v1/token", strZ(stsHost)), .type = httpProtocolTypeHttps);
+                const KeyValue *const kvKey = varKv(
+                    jsonToVar(strNewBuf(storageGetP(storageNewReadP(storagePosixNewP(FSLASH_STR), key)))));
+
+                const String *const type = varStr(kvGet(kvKey, GCS_JSON_TYPE_VAR));
+                CHECK(FormatError, type != NULL && strEqZ(type, "external_account"), "not an external account credential file");
+
+                // Impersonation would require a second exchange so the federated identity must have direct access
+                CHECK(
+                    FormatError, kvGet(kvKey, GCS_JSON_SA_IMPERSONATION_URL_VAR) == NULL,
+                    "service account impersonation is not supported");
+
+                const String *const audience = varStr(kvGet(kvKey, GCS_JSON_AUDIENCE_VAR));
+                CHECK(FormatError, audience != NULL, "audience missing");
+                const String *const tokenUrl = varStr(kvGet(kvKey, GCS_JSON_TOKEN_URL_VAR));
+                CHECK(FormatError, tokenUrl != NULL, "token url missing");
+
+                const KeyValue *const credentialSource = varKv(kvGet(kvKey, GCS_JSON_CREDENTIAL_SOURCE_VAR));
+                CHECK(FormatError, credentialSource != NULL, "credential source missing");
+                const String *const tokenFile = varStr(kvGet(credentialSource, GCS_JSON_FILE_VAR));
+                CHECK(FormatError, tokenFile != NULL, "token file missing");
+
+                // Only the default text format is supported
+                const Variant *const format = kvGet(credentialSource, GCS_JSON_FORMAT_VAR);
+
+                if (format != NULL)
+                {
+                    const String *const formatType = varStr(kvGet(varKv(format), GCS_JSON_TYPE_VAR));
+                    CHECK(
+                        FormatError, formatType != NULL && strEqZ(formatType, "text"),
+                        "credential source format is not supported");
+                }
+
+                this->webIdTokenFile = strDup(tokenFile);
+                this->webIdAudience = strDup(audience);
+                this->authUrl = httpUrlNewParseP(tokenUrl, .type = httpProtocolTypeHttps);
                 this->authClient = httpClientNew(
                     tlsClientNewP(
                         sckClientNew(httpUrlHost(this->authUrl), httpUrlPort(this->authUrl), timeout, timeout),

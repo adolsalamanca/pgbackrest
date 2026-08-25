@@ -134,7 +134,6 @@ static const StringPubConst parseRuleValueStr[] =
     PARSE_RULE_STRPUB("storage.googleapis.com"),                                                                          // val/str
     PARSE_RULE_STRPUB("strict"),                                                                                          // val/str
     PARSE_RULE_STRPUB("sts.amazonaws.com"),                                                                               // val/str
-    PARSE_RULE_STRPUB("sts.googleapis.com"),                                                                              // val/str
     PARSE_RULE_STRPUB("text"),                                                                                            // val/str
     PARSE_RULE_STRPUB("time"),                                                                                            // val/str
     PARSE_RULE_STRPUB("tls"),                                                                                             // val/str
@@ -274,7 +273,6 @@ typedef enum
     parseRuleValStrQT_storage_DT_googleapis_DT_com_QT,                                                               // val/str/enum
     parseRuleValStrQT_strict_QT,                                                                                     // val/str/enum
     parseRuleValStrQT_sts_DT_amazonaws_DT_com_QT,                                                                    // val/str/enum
-    parseRuleValStrQT_sts_DT_googleapis_DT_com_QT,                                                                   // val/str/enum
     parseRuleValStrQT_text_QT,                                                                                       // val/str/enum
     parseRuleValStrQT_time_QT,                                                                                       // val/str/enum
     parseRuleValStrQT_tls_QT,                                                                                        // val/str/enum
@@ -6284,6 +6282,7 @@ static const ParseRuleOption parseRuleOption[CFG_OPTION_TOTAL] =
                     PARSE_RULE_VAL_OPT(RepoGcsKeyType),                                                          // opt/repo-gcs-key
                     PARSE_RULE_VAL_STRID(service),                                                               // opt/repo-gcs-key
                     PARSE_RULE_VAL_STRID(token),                                                                 // opt/repo-gcs-key
+                    PARSE_RULE_VAL_STRID(web_DS_id),                                                             // opt/repo-gcs-key
                 ),                                                                                               // opt/repo-gcs-key
             ),                                                                                                   // opt/repo-gcs-key
         ),                                                                                                       // opt/repo-gcs-key
@@ -6380,88 +6379,6 @@ static const ParseRuleOption parseRuleOption[CFG_OPTION_TOTAL] =
         ),                                                                                                  // opt/repo-gcs-key-type
     ),                                                                                                      // opt/repo-gcs-key-type
     // -----------------------------------------------------------------------------------------------------------------------------
-    PARSE_RULE_OPTION                                                                                       // opt/repo-gcs-sts-host
-    (                                                                                                       // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_NAME("repo-gcs-sts-host"),                                                        // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_TYPE(String),                                                                     // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_RESET(true),                                                                      // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_REQUIRED(true),                                                                   // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_SECTION(Global),                                                                  // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_GROUP_ID(Repo),                                                                   // opt/repo-gcs-sts-host
-                                                                                                            // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_COMMAND_ROLE_MAIN_VALID_LIST                                                      // opt/repo-gcs-sts-host
-        (                                                                                                   // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Annotate)                                                             // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                           // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                          // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Check)                                                                // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Expire)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Info)                                                                 // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Manifest)                                                             // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(RepoGet)                                                              // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(RepoLs)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(RepoRm)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                              // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(StanzaCreate)                                                         // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(StanzaDelete)                                                         // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(StanzaUpgrade)                                                        // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                               // opt/repo-gcs-sts-host
-        ),                                                                                                  // opt/repo-gcs-sts-host
-                                                                                                            // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_COMMAND_ROLE_ASYNC_VALID_LIST                                                     // opt/repo-gcs-sts-host
-        (                                                                                                   // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                           // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                          // opt/repo-gcs-sts-host
-        ),                                                                                                  // opt/repo-gcs-sts-host
-                                                                                                            // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_COMMAND_ROLE_LOCAL_VALID_LIST                                                     // opt/repo-gcs-sts-host
-        (                                                                                                   // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                           // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                          // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                              // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                               // opt/repo-gcs-sts-host
-        ),                                                                                                  // opt/repo-gcs-sts-host
-                                                                                                            // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTION_COMMAND_ROLE_REMOTE_VALID_LIST                                                    // opt/repo-gcs-sts-host
-        (                                                                                                   // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Annotate)                                                             // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                           // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                          // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Check)                                                                // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Expire)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Info)                                                                 // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Manifest)                                                             // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(RepoGet)                                                              // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(RepoLs)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(RepoRm)                                                               // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                              // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(StanzaCreate)                                                         // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(StanzaDelete)                                                         // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(StanzaUpgrade)                                                        // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                               // opt/repo-gcs-sts-host
-        ),                                                                                                  // opt/repo-gcs-sts-host
-                                                                                                            // opt/repo-gcs-sts-host
-        PARSE_RULE_OPTIONAL                                                                                 // opt/repo-gcs-sts-host
-        (                                                                                                   // opt/repo-gcs-sts-host
-            PARSE_RULE_OPTIONAL_GROUP                                                                       // opt/repo-gcs-sts-host
-            (                                                                                               // opt/repo-gcs-sts-host
-                PARSE_RULE_OPTIONAL_DEPEND                                                                  // opt/repo-gcs-sts-host
-                (                                                                                           // opt/repo-gcs-sts-host
-                    PARSE_RULE_VAL_OPT(RepoGcsKeyType),                                                     // opt/repo-gcs-sts-host
-                    PARSE_RULE_VAL_STRID(web_DS_id),                                                        // opt/repo-gcs-sts-host
-                ),                                                                                          // opt/repo-gcs-sts-host
-                                                                                                            // opt/repo-gcs-sts-host
-                PARSE_RULE_OPTIONAL_DEFAULT                                                                 // opt/repo-gcs-sts-host
-                (                                                                                           // opt/repo-gcs-sts-host
-                    PARSE_RULE_VAL_STR(QT_sts_DT_googleapis_DT_com_QT),                                     // opt/repo-gcs-sts-host
-                ),                                                                                          // opt/repo-gcs-sts-host
-            ),                                                                                              // opt/repo-gcs-sts-host
-        ),                                                                                                  // opt/repo-gcs-sts-host
-    ),                                                                                                      // opt/repo-gcs-sts-host
-    // -----------------------------------------------------------------------------------------------------------------------------
     PARSE_RULE_OPTION                                                                                   // opt/repo-gcs-user-project
     (                                                                                                   // opt/repo-gcs-user-project
         PARSE_RULE_OPTION_NAME("repo-gcs-user-project"),                                                // opt/repo-gcs-user-project
@@ -6526,160 +6443,6 @@ static const ParseRuleOption parseRuleOption[CFG_OPTION_TOTAL] =
             PARSE_RULE_OPTION_COMMAND(Verify)                                                           // opt/repo-gcs-user-project
         ),                                                                                              // opt/repo-gcs-user-project
     ),                                                                                                  // opt/repo-gcs-user-project
-    // -----------------------------------------------------------------------------------------------------------------------------
-    PARSE_RULE_OPTION                                                                                // opt/repo-gcs-web-id-audience
-    (                                                                                                // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_NAME("repo-gcs-web-id-audience"),                                          // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_TYPE(String),                                                              // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_RESET(true),                                                               // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_REQUIRED(true),                                                            // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_SECTION(Global),                                                           // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_GROUP_ID(Repo),                                                            // opt/repo-gcs-web-id-audience
-                                                                                                     // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_COMMAND_ROLE_MAIN_VALID_LIST                                               // opt/repo-gcs-web-id-audience
-        (                                                                                            // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Annotate)                                                      // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                    // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                   // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Check)                                                         // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Expire)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Info)                                                          // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Manifest)                                                      // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(RepoGet)                                                       // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(RepoLs)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(RepoRm)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                       // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(StanzaCreate)                                                  // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(StanzaDelete)                                                  // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(StanzaUpgrade)                                                 // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                        // opt/repo-gcs-web-id-audience
-        ),                                                                                           // opt/repo-gcs-web-id-audience
-                                                                                                     // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_COMMAND_ROLE_ASYNC_VALID_LIST                                              // opt/repo-gcs-web-id-audience
-        (                                                                                            // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                    // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                   // opt/repo-gcs-web-id-audience
-        ),                                                                                           // opt/repo-gcs-web-id-audience
-                                                                                                     // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_COMMAND_ROLE_LOCAL_VALID_LIST                                              // opt/repo-gcs-web-id-audience
-        (                                                                                            // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                    // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                   // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                       // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                        // opt/repo-gcs-web-id-audience
-        ),                                                                                           // opt/repo-gcs-web-id-audience
-                                                                                                     // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTION_COMMAND_ROLE_REMOTE_VALID_LIST                                             // opt/repo-gcs-web-id-audience
-        (                                                                                            // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Annotate)                                                      // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                    // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                   // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Check)                                                         // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Expire)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Info)                                                          // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Manifest)                                                      // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(RepoGet)                                                       // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(RepoLs)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(RepoRm)                                                        // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                       // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(StanzaCreate)                                                  // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(StanzaDelete)                                                  // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(StanzaUpgrade)                                                 // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                        // opt/repo-gcs-web-id-audience
-        ),                                                                                           // opt/repo-gcs-web-id-audience
-                                                                                                     // opt/repo-gcs-web-id-audience
-        PARSE_RULE_OPTIONAL                                                                          // opt/repo-gcs-web-id-audience
-        (                                                                                            // opt/repo-gcs-web-id-audience
-            PARSE_RULE_OPTIONAL_GROUP                                                                // opt/repo-gcs-web-id-audience
-            (                                                                                        // opt/repo-gcs-web-id-audience
-                PARSE_RULE_OPTIONAL_DEPEND                                                           // opt/repo-gcs-web-id-audience
-                (                                                                                    // opt/repo-gcs-web-id-audience
-                    PARSE_RULE_VAL_OPT(RepoGcsKeyType),                                              // opt/repo-gcs-web-id-audience
-                    PARSE_RULE_VAL_STRID(web_DS_id),                                                 // opt/repo-gcs-web-id-audience
-                ),                                                                                   // opt/repo-gcs-web-id-audience
-            ),                                                                                       // opt/repo-gcs-web-id-audience
-        ),                                                                                           // opt/repo-gcs-web-id-audience
-    ),                                                                                               // opt/repo-gcs-web-id-audience
-    // -----------------------------------------------------------------------------------------------------------------------------
-    PARSE_RULE_OPTION                                                                              // opt/repo-gcs-web-id-token-file
-    (                                                                                              // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_NAME("repo-gcs-web-id-token-file"),                                      // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_TYPE(String),                                                            // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_RESET(true),                                                             // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_REQUIRED(true),                                                          // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_SECTION(Global),                                                         // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_GROUP_ID(Repo),                                                          // opt/repo-gcs-web-id-token-file
-                                                                                                   // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_COMMAND_ROLE_MAIN_VALID_LIST                                             // opt/repo-gcs-web-id-token-file
-        (                                                                                          // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Annotate)                                                    // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                  // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                 // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Check)                                                       // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Expire)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Info)                                                        // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Manifest)                                                    // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(RepoGet)                                                     // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(RepoLs)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(RepoRm)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                     // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(StanzaCreate)                                                // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(StanzaDelete)                                                // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(StanzaUpgrade)                                               // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                      // opt/repo-gcs-web-id-token-file
-        ),                                                                                         // opt/repo-gcs-web-id-token-file
-                                                                                                   // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_COMMAND_ROLE_ASYNC_VALID_LIST                                            // opt/repo-gcs-web-id-token-file
-        (                                                                                          // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                  // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                 // opt/repo-gcs-web-id-token-file
-        ),                                                                                         // opt/repo-gcs-web-id-token-file
-                                                                                                   // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_COMMAND_ROLE_LOCAL_VALID_LIST                                            // opt/repo-gcs-web-id-token-file
-        (                                                                                          // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                  // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                 // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                     // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                      // opt/repo-gcs-web-id-token-file
-        ),                                                                                         // opt/repo-gcs-web-id-token-file
-                                                                                                   // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTION_COMMAND_ROLE_REMOTE_VALID_LIST                                           // opt/repo-gcs-web-id-token-file
-        (                                                                                          // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Annotate)                                                    // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchiveGet)                                                  // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(ArchivePush)                                                 // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Backup)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Check)                                                       // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Expire)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Info)                                                        // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Manifest)                                                    // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(RepoGet)                                                     // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(RepoLs)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(RepoRm)                                                      // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Restore)                                                     // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(StanzaCreate)                                                // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(StanzaDelete)                                                // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(StanzaUpgrade)                                               // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTION_COMMAND(Verify)                                                      // opt/repo-gcs-web-id-token-file
-        ),                                                                                         // opt/repo-gcs-web-id-token-file
-                                                                                                   // opt/repo-gcs-web-id-token-file
-        PARSE_RULE_OPTIONAL                                                                        // opt/repo-gcs-web-id-token-file
-        (                                                                                          // opt/repo-gcs-web-id-token-file
-            PARSE_RULE_OPTIONAL_GROUP                                                              // opt/repo-gcs-web-id-token-file
-            (                                                                                      // opt/repo-gcs-web-id-token-file
-                PARSE_RULE_OPTIONAL_DEPEND                                                         // opt/repo-gcs-web-id-token-file
-                (                                                                                  // opt/repo-gcs-web-id-token-file
-                    PARSE_RULE_VAL_OPT(RepoGcsKeyType),                                            // opt/repo-gcs-web-id-token-file
-                    PARSE_RULE_VAL_STRID(web_DS_id),                                               // opt/repo-gcs-web-id-token-file
-                ),                                                                                 // opt/repo-gcs-web-id-token-file
-            ),                                                                                     // opt/repo-gcs-web-id-token-file
-        ),                                                                                         // opt/repo-gcs-web-id-token-file
-    ),                                                                                             // opt/repo-gcs-web-id-token-file
     // -----------------------------------------------------------------------------------------------------------------------------
     PARSE_RULE_OPTION                                                                                           // opt/repo-hardlink
     (                                                                                                           // opt/repo-hardlink
@@ -12410,9 +12173,6 @@ static const uint8_t optionResolveOrder[] =
     cfgOptRepoBlockSizeSuperFull,                                                                               // opt-resolve-order
     cfgOptRepoCipherPass,                                                                                       // opt-resolve-order
     cfgOptRepoGcsKeyType,                                                                                       // opt-resolve-order
-    cfgOptRepoGcsStsHost,                                                                                       // opt-resolve-order
-    cfgOptRepoGcsWebIdAudience,                                                                                 // opt-resolve-order
-    cfgOptRepoGcsWebIdTokenFile,                                                                                // opt-resolve-order
     cfgOptRepoHost,                                                                                             // opt-resolve-order
     cfgOptRepoHostConfig,                                                                                       // opt-resolve-order
     cfgOptRepoHostConfigIncludePath,                                                                            // opt-resolve-order

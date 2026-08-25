@@ -737,7 +737,7 @@
                         <summary>GCS repository key.</summary>
 
                         <text>
-                            <p>A token or service key file depending on the <br-option>repo-gcs-key-type</br-option> option.</p>
+                            <p>A token, service key file, or external account credential file depending on the <br-option>repo-gcs-key-type</br-option> option.</p>
                         </text>
 
                         <example>/etc/pgbackrest/gcs-key.json</example>
@@ -755,19 +755,11 @@
                             </allow-list>
 
                             <p>When <br-option>repo-gcs-key-type=service</br-option> the credentials will be reloaded when the authentication token is renewed.</p>
+
+                            <p>When <br-option>repo-gcs-key-type=web-id</br-option> the <br-option>repo-gcs-key</br-option> option must contain an external account credential file and the web identity token will be reloaded when the authentication token is renewed.</p>
                         </text>
 
                         <example>auto</example>
-                    </config-key>
-
-                    <config-key id="repo-gcs-sts-host" name="GCS Security Token Service Host">
-                        <summary>GCS security token service host.</summary>
-
-                        <text>
-                            <p>Host used to exchange a web identity token.</p>
-                        </text>
-
-                        <example>sts.googleapis.com</example>
                     </config-key>
 
                     <config-key id="repo-gcs-user-project" name="GCS Repository Project ID">
@@ -778,26 +770,6 @@
                         </text>
 
                         <example>my-project</example>
-                    </config-key>
-
-                    <config-key id="repo-gcs-web-id-audience" name="GCS Web Identity Audience">
-                        <summary>GCS Workload Identity Federation provider resource name.</summary>
-
-                        <text>
-                            <p>Audience used when exchanging a web identity token.</p>
-                        </text>
-
-                        <example>//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider</example>
-                    </config-key>
-
-                    <config-key id="repo-gcs-web-id-token-file" name="GCS Web Identity Token File">
-                        <summary>GCS web identity JWT file.</summary>
-
-                        <text>
-                            <p>JWT file used for Workload Identity Federation.</p>
-                        </text>
-
-                        <example>/var/run/secrets/workload-identity-token</example>
                     </config-key>
 
                     <config-key id="repo-host-type" name="Repository Host Protocol Type">

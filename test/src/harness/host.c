@@ -763,7 +763,7 @@ hrnHostConfig(HrnHost *const this)
 
                         this->pub.repo1Storage = storageGcsNew(
                             hrnHostRepo1Path(this), true, 0, NULL, STRDEF(HRN_HOST_GCS_BUCKET), storageGcsKeyTypeToken,
-                            STRDEF(HRN_HOST_GCS_KEY), NULL, NULL, NULL, 4 * 1024 * 1024, NULL,
+                            STRDEF(HRN_HOST_GCS_KEY), 4 * 1024 * 1024, NULL,
                             strNewFmt("%s:%d", strZ(hrnHostIp(gcs)), HRN_HOST_GCS_PORT), ioTimeoutMs(), false, NULL, NULL, NULL, 2,
                             8192);
                     }

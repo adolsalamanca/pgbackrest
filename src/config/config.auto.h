@@ -145,7 +145,7 @@ Option constants
 #define CFGOPT_VERBOSE                                              "verbose"
 #define CFGOPT_VERSION                                              "version"
 
-#define CFG_OPTION_TOTAL                                            203
+#define CFG_OPTION_TOTAL                                            200
 
 /***********************************************************************************************************************************
 Option value constants
@@ -594,10 +594,7 @@ typedef enum
     cfgOptRepoGcsEndpoint,
     cfgOptRepoGcsKey,
     cfgOptRepoGcsKeyType,
-    cfgOptRepoGcsStsHost,
     cfgOptRepoGcsUserProject,
-    cfgOptRepoGcsWebIdAudience,
-    cfgOptRepoGcsWebIdTokenFile,
     cfgOptRepoHardlink,
     cfgOptRepoHost,
     cfgOptRepoHostCaFile,

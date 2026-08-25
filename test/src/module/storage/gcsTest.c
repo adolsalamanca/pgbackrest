@@ -273,7 +273,9 @@ testRun(void)
         TEST_RESULT_BOOL(storageFeature(storage, storageFeaturePath), false, "check path feature");
 
         // -------------------------------------------------------------------------------------------------------------------------
-        TEST_TITLE("web identity config and constructor validation");
+        TEST_TITLE("web identity config and credential file validation");
+
+        hrnCfgEnvRemoveRaw(cfgOptRepoGcsKey);
 
         argList = strLstNew();
         hrnCfgArgRawZ(argList, cfgOptStanza, "test");
@@ -281,38 +283,66 @@ testRun(void)
         hrnCfgArgRawZ(argList, cfgOptRepoPath, "/repo");
         hrnCfgArgRawZ(argList, cfgOptRepoGcsBucket, TEST_BUCKET);
         hrnCfgArgRawZ(argList, cfgOptRepoGcsKeyType, "web-id");
-        strLstAddZ(argList, "--repo1-gcs-web-id-token-file=" TEST_PATH "/web-id.jwt");
-        strLstAddZ(
-            argList,
-            "--repo1-gcs-web-id-audience=//iam.googleapis.com/projects/123/locations/global/"
-            "workloadIdentityPools/pool/providers/provider");
-        strLstAddZ(argList, "--repo1-gcs-sts-host=localhost:12345");
+        TEST_ERROR(
+            hrnCfgLoad(cfgCmdArchivePush, argList, (HrnCfgLoadParam){0}), OptionRequiredError,
+            "archive-push command requires option: repo1-gcs-key");
+
+        hrnCfgEnvRawZ(cfgOptRepoGcsKey, TEST_PATH "/credential.json");
         HRN_CFG_LOAD(cfgCmdArchivePush, argList);
 
-        TEST_ASSIGN(storage, storageRepoGet(0, false), "get repo storage without repo-gcs-key");
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"audience\":\"aud\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
+
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":\"service_account\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"service_account_impersonation_url\":\"https://x\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "service account impersonation is not supported");
+
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":\"external_account\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "audience missing");
+
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":\"external_account\",\"audience\":\"aud\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "token url missing");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "credential source missing");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "token file missing");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{\"file\":\"/token\",\"format\":{}}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "credential source format is not supported");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{\"file\":\"/token\",\"format\":{\"type\":\"json\"}}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "credential source format is not supported");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{\"file\":\"/token\"}}");
+        TEST_ASSIGN(storage, storageRepoGet(0, false), "valid credential file");
+
         StorageGcs *const storageGcs = (StorageGcs *)storageDriver(storage);
-        TEST_RESULT_STR_Z(
-            httpUrl(storageGcs->authUrl), "localhost:12345/v1/token", "check web identity STS url");
+        TEST_RESULT_STR_Z(httpUrl(storageGcs->authUrl), "https://localhost:12345/v1/token", "check web identity STS url");
         TEST_RESULT_UINT(httpUrlProtocolType(storageGcs->authUrl), httpProtocolTypeHttps, "check STS protocol");
+        TEST_RESULT_STR_Z(storageGcs->webIdTokenFile, "/token", "check web identity token file");
+        TEST_RESULT_STR_Z(storageGcs->webIdAudience, "aud", "check web identity audience");
 
-        argList = strLstNew();
-        hrnCfgArgRawZ(argList, cfgOptStanza, "test");
-        hrnCfgArgRawStrId(argList, cfgOptRepoType, STORAGE_GCS_TYPE);
-        hrnCfgArgRawZ(argList, cfgOptRepoGcsBucket, TEST_BUCKET);
-        hrnCfgArgRawZ(argList, cfgOptRepoGcsKeyType, "web-id");
-        strLstAddZ(argList, "--repo1-gcs-web-id-token-file=" TEST_PATH "/web-id.jwt");
-        TEST_ERROR(
-            hrnCfgLoad(cfgCmdArchivePush, argList, (HrnCfgLoadParam){0}), OptionRequiredError,
-            "archive-push command requires option: repo1-gcs-web-id-audience");
-
-        strLstAddZ(
-            argList,
-            "--repo1-gcs-web-id-audience=//iam.googleapis.com/projects/123/locations/global/"
-            "workloadIdentityPools/pool/providers/provider");
-        strLstRemoveIdx(argList, strLstSize(argList) - 2);
-        TEST_ERROR(
-            hrnCfgLoad(cfgCmdArchivePush, argList, (HrnCfgLoadParam){0}), OptionRequiredError,
-            "archive-push command requires option: repo1-gcs-web-id-token-file");
+        hrnCfgEnvRemoveRaw(cfgOptRepoGcsKey);
     }
 
     // *****************************************************************************************************************************
@@ -329,8 +359,8 @@ testRun(void)
             storage,
             (StorageGcs *)storageDriver(
                 storageGcsNew(
-                    STRDEF("/repo"), false, 0, NULL, TEST_BUCKET_STR, storageGcsKeyTypeService, TEST_KEY_FILE_STR, NULL, NULL, NULL,
-                    TEST_CHUNK_SIZE, NULL, TEST_ENDPOINT_STR, TEST_TIMEOUT, true, NULL, NULL, NULL, 1, 0)),
+                    STRDEF("/repo"), false, 0, NULL, TEST_BUCKET_STR, storageGcsKeyTypeService, TEST_KEY_FILE_STR, TEST_CHUNK_SIZE,
+                    NULL, TEST_ENDPOINT_STR, TEST_TIMEOUT, true, NULL, NULL, NULL, 1, 0)),
             "read-only gcs storage - service key");
         TEST_RESULT_STR_Z(httpUrlHost(storage->authUrl), "test.com", "check host");
         TEST_RESULT_STR_Z(httpUrlPath(storage->authUrl), "/token", "check path");
@@ -354,8 +384,8 @@ testRun(void)
             storage,
             (StorageGcs *)storageDriver(
                 storageGcsNew(
-                    STRDEF("/repo"), true, 0, NULL, TEST_BUCKET_STR, storageGcsKeyTypeService, TEST_KEY_FILE_STR, NULL, NULL, NULL,
-                    TEST_CHUNK_SIZE, NULL, TEST_ENDPOINT_STR, TEST_TIMEOUT, true, NULL, NULL, NULL, 1, 0)),
+                    STRDEF("/repo"), true, 0, NULL, TEST_BUCKET_STR, storageGcsKeyTypeService, TEST_KEY_FILE_STR, TEST_CHUNK_SIZE,
+                    NULL, TEST_ENDPOINT_STR, TEST_TIMEOUT, true, NULL, NULL, NULL, 1, 0)),
             "read/write gcs storage - service key");
 
         TEST_RESULT_STR_Z(
@@ -397,6 +427,16 @@ testRun(void)
                     ioFdWriteNewOpen(STRDEF("gcs sts client write"), HRN_FORK_PARENT_WRITE_FD(1), 2000));
 
                 HRN_STORAGE_PUT(storageTest, TEST_PATH "/web-id.jwt", BUFSTRDEF("header.payload+/=\n"));
+                HRN_STORAGE_PUT(
+                    storageTest, TEST_PATH "/credential.json",
+                    BUFSTR(
+                        strNewFmt(
+                            "{\"type\":\"external_account\","
+                            "\"audience\":\"//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/"
+                            "providers/provider\","
+                            "\"token_url\":\"https://%s:%u/v1/token\","
+                            "\"credential_source\":{\"file\":\"" TEST_PATH "/web-id.jwt\",\"format\":{\"type\":\"text\"}}}",
+                            strZ(hrnServerHost()), testPortSts)));
 
                 StringList *const argList = strLstNew();
                 hrnCfgArgRawZ(argList, cfgOptStanza, "test");
@@ -405,11 +445,7 @@ testRun(void)
                 hrnCfgArgRawZ(argList, cfgOptRepoGcsBucket, TEST_BUCKET);
                 hrnCfgArgRawFmt(argList, cfgOptRepoGcsEndpoint, "https://%s:%u", strZ(hrnServerHost()), testPort);
                 hrnCfgArgRawZ(argList, cfgOptRepoGcsKeyType, "web-id");
-                hrnCfgArgRawZ(argList, cfgOptRepoGcsWebIdTokenFile, TEST_PATH "/web-id.jwt");
-                hrnCfgArgRawZ(
-                    argList, cfgOptRepoGcsWebIdAudience,
-                    "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider");
-                hrnCfgArgRawFmt(argList, cfgOptRepoGcsStsHost, "%s:%u", strZ(hrnServerHost()), testPortSts);
+                hrnCfgEnvRawZ(cfgOptRepoGcsKey, TEST_PATH "/credential.json");
                 hrnCfgArgRawBool(argList, cfgOptRepoStorageVerifyTls, TEST_IN_CONTAINER);
                 HRN_CFG_LOAD(cfgCmdArchivePush, argList);
 
@@ -476,6 +512,30 @@ testRun(void)
                     storageGetP(storageNewReadP(storage, STRDEF("missing3"), .ignoreMissing = true)), ProtocolError,
                     "unable to get authentication token: [invalid_grant] subject token rejected");
 
+                // Flat errors with a missing or invalid description are reported with a null description
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
+                testResponseP(
+                    sts, .code = 400, .header = "content-type:application/json",
+                    .content = "{\"error\":\"invalid_grant\",\"error_description\":{}}");
+                hrnServerScriptClose(sts);
+                TEST_ERROR(
+                    storageGetP(storageNewReadP(storage, STRDEF("missing3a"), .ignoreMissing = true)), ProtocolError,
+                    "unable to get authentication token: [invalid_grant] null");
+
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
+                testResponseP(
+                    sts, .code = 400, .header = "content-type:application/json", .content = "{\"error\":\"invalid_grant\"}");
+                hrnServerScriptClose(sts);
+                TEST_ERROR(
+                    storageGetP(storageNewReadP(storage, STRDEF("missing3b"), .ignoreMissing = true)), ProtocolError,
+                    "unable to get authentication token: [invalid_grant] null");
+
                 // Missing required token response fields fail cleanly
                 hrnServerScriptAccept(sts);
                 testRequestP(
@@ -518,6 +578,31 @@ testRun(void)
                     "content-type: text/html\n"
                     "*** Response Content ***:\n"
                     "<html>error</html>",
+                    strlen(rotatedContent), strZ(hrnServerHost()));
+
+                // A nested error object, e.g. when the STS API is disabled, is reported with the entire response
+                hrnServerScriptAccept(sts);
+                testRequestP(
+                    sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
+                    .content = rotatedContent);
+                testResponseP(
+                    sts, .code = 403, .header = "content-type:application/json",
+                    .content = "{\"error\":{\"code\":403,\"message\":\"sts api disabled\"}}");
+                hrnServerScriptClose(sts);
+                TEST_ERROR_FMT(
+                    storageGetP(storageNewReadP(storage, STRDEF("missing8"), .ignoreMissing = true)), ProtocolError,
+                    "HTTP request failed with 403 (Forbidden):\n"
+                    "*** Path/Query ***:\n"
+                    "POST /v1/token\n"
+                    "*** Request Headers ***:\n"
+                    "content-length: %zu\n"
+                    "content-type: application/x-www-form-urlencoded\n"
+                    "host: %s\n"
+                    "*** Response Headers ***:\n"
+                    "content-length: 51\n"
+                    "content-type: application/json\n"
+                    "*** Response Content ***:\n"
+                    "{\"error\":{\"code\":403,\"message\":\"sts api disabled\"}}",
                     strlen(rotatedContent), strZ(hrnServerHost()));
 
                 // An error response without a content-type is also reported directly
