@@ -293,6 +293,15 @@ testRun(void)
         HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"audience\":\"aud\"}");
         TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
 
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "[]");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
+
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "null");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
+
+        HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":{}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
+
         HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":\"service_account\"}");
         TEST_ERROR(storageRepoGet(0, false), FormatError, "not an external account credential file");
 
@@ -304,8 +313,17 @@ testRun(void)
         HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":\"external_account\"}");
         TEST_ERROR(storageRepoGet(0, false), FormatError, "audience missing");
 
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json", "{\"type\":\"external_account\",\"audience\":{}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "audience must be a string");
+
         HRN_STORAGE_PUT_Z(storageTest, TEST_PATH "/credential.json", "{\"type\":\"external_account\",\"audience\":\"aud\"}");
         TEST_ERROR(storageRepoGet(0, false), FormatError, "token url missing");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":{}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "token url must be a string");
 
         HRN_STORAGE_PUT_Z(
             storageTest, TEST_PATH "/credential.json",
@@ -315,8 +333,26 @@ testRun(void)
         HRN_STORAGE_PUT_Z(
             storageTest, TEST_PATH "/credential.json",
             "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":\"file\"}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "credential source must be an object");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
             "\"credential_source\":{}}");
         TEST_ERROR(storageRepoGet(0, false), FormatError, "token file missing");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{\"file\":{}}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "token file must be a string");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{\"file\":\"/token\",\"format\":\"text\"}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "credential source format is not supported");
 
         HRN_STORAGE_PUT_Z(
             storageTest, TEST_PATH "/credential.json",
@@ -451,13 +487,13 @@ testRun(void)
 
                 Storage *const storage = storageRepoGet(0, false);
                 const char *const content =
-                    "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&"
                     "audience=%2F%2Fiam.googleapis.com%2Fprojects%2F123%2Flocations%2Fglobal%2FworkloadIdentityPools%2Fpool%2F"
                     "providers%2Fprovider&"
+                    "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&"
                     "requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&"
+                    "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only&"
                     "subject_token=header.payload%2B%2F%3D&"
-                    "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt&"
-                    "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only";
+                    "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt";
 
                 hrnServerScriptAccept(sts);
                 testRequestP(
@@ -478,13 +514,13 @@ testRun(void)
                 HRN_STORAGE_PUT(storageTest, TEST_PATH "/web-id.jwt", BUFSTRDEF("rotated jwt\n"));
 
                 const char *const rotatedContent =
-                    "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&"
                     "audience=%2F%2Fiam.googleapis.com%2Fprojects%2F123%2Flocations%2Fglobal%2FworkloadIdentityPools%2Fpool%2F"
                     "providers%2Fprovider&"
+                    "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&"
                     "requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&"
+                    "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only&"
                     "subject_token=rotated%20jwt&"
-                    "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt&"
-                    "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_only";
+                    "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt";
                 hrnServerScriptAccept(sts);
                 testRequestP(
                     sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
@@ -498,7 +534,7 @@ testRun(void)
                     storageGetP(storageNewReadP(storage, STRDEF("missing2"), .ignoreMissing = true)), NULL,
                     "renew with rotated web identity token");
 
-                // Non-200 STS errors use the standard GCS auth error fields
+                // STS responses are redacted because a provider may echo all or part of the subject token
                 ((StorageGcs *)storageDriver(storage))->tokenTimeExpire = 0;
                 hrnServerScriptAccept(sts);
                 testRequestP(
@@ -506,13 +542,13 @@ testRun(void)
                     .content = rotatedContent);
                 testResponseP(
                     sts, .code = 400, .header = "content-type:application/json",
-                    .content = "{\"error\":\"invalid_grant\",\"error_description\":\"subject token rejected\"}");
+                    .content = "{\"error\":\"invalid_grant\",\"error_description\":\"token rotated rejected\"}");
                 hrnServerScriptClose(sts);
                 TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing3"), .ignoreMissing = true)), ProtocolError,
-                    "unable to get authentication token: [invalid_grant] subject token rejected");
+                    "unable to get authentication token: HTTP request failed with 400; response redacted");
 
-                // Flat errors with a missing or invalid description are reported with a null description
+                // Redaction is independent of response shape
                 hrnServerScriptAccept(sts);
                 testRequestP(
                     sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
@@ -523,7 +559,7 @@ testRun(void)
                 hrnServerScriptClose(sts);
                 TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing3a"), .ignoreMissing = true)), ProtocolError,
-                    "unable to get authentication token: [invalid_grant] null");
+                    "unable to get authentication token: HTTP request failed with 400; response redacted");
 
                 hrnServerScriptAccept(sts);
                 testRequestP(
@@ -534,7 +570,7 @@ testRun(void)
                 hrnServerScriptClose(sts);
                 TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing3b"), .ignoreMissing = true)), ProtocolError,
-                    "unable to get authentication token: [invalid_grant] null");
+                    "unable to get authentication token: HTTP request failed with 400; response redacted");
 
                 // Missing required token response fields fail cleanly
                 hrnServerScriptAccept(sts);
@@ -557,30 +593,18 @@ testRun(void)
                     storageGetP(storageNewReadP(storage, STRDEF("missing5"), .ignoreMissing = true)), FormatError,
                     "expiry missing");
 
-                // A non-JSON error response, e.g. from a misconfigured authentication server, reports the HTTP error directly
+                // Non-JSON responses are also redacted
                 hrnServerScriptAccept(sts);
                 testRequestP(
                     sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
                     .content = rotatedContent);
                 testResponseP(sts, .code = 400, .header = "content-type:text/html", .content = "<html>error</html>");
                 hrnServerScriptClose(sts);
-                TEST_ERROR_FMT(
+                TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing6"), .ignoreMissing = true)), ProtocolError,
-                    "HTTP request failed with 400:\n"
-                    "*** Path/Query ***:\n"
-                    "POST /v1/token\n"
-                    "*** Request Headers ***:\n"
-                    "content-length: %zu\n"
-                    "content-type: application/x-www-form-urlencoded\n"
-                    "host: %s\n"
-                    "*** Response Headers ***:\n"
-                    "content-length: 18\n"
-                    "content-type: text/html\n"
-                    "*** Response Content ***:\n"
-                    "<html>error</html>",
-                    strlen(rotatedContent), strZ(hrnServerHost()));
+                    "unable to get authentication token: HTTP request failed with 400; response redacted");
 
-                // A nested error object, e.g. when the STS API is disabled, is reported with the entire response
+                // Nested error objects are redacted
                 hrnServerScriptAccept(sts);
                 testRequestP(
                     sts, HTTP_VERB_POST, .path = "/v1/token", .noAuth = true, .contentType = "application/x-www-form-urlencoded",
@@ -589,21 +613,9 @@ testRun(void)
                     sts, .code = 403, .header = "content-type:application/json",
                     .content = "{\"error\":{\"code\":403,\"message\":\"sts api disabled\"}}");
                 hrnServerScriptClose(sts);
-                TEST_ERROR_FMT(
+                TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing8"), .ignoreMissing = true)), ProtocolError,
-                    "HTTP request failed with 403 (Forbidden):\n"
-                    "*** Path/Query ***:\n"
-                    "POST /v1/token\n"
-                    "*** Request Headers ***:\n"
-                    "content-length: %zu\n"
-                    "content-type: application/x-www-form-urlencoded\n"
-                    "host: %s\n"
-                    "*** Response Headers ***:\n"
-                    "content-length: 51\n"
-                    "content-type: application/json\n"
-                    "*** Response Content ***:\n"
-                    "{\"error\":{\"code\":403,\"message\":\"sts api disabled\"}}",
-                    strlen(rotatedContent), strZ(hrnServerHost()));
+                    "unable to get authentication token: HTTP request failed with 403; response redacted");
 
                 // An error response without a content-type is also reported directly
                 hrnServerScriptAccept(sts);
@@ -612,26 +624,19 @@ testRun(void)
                     .content = rotatedContent);
                 testResponseP(sts, .code = 400);
                 hrnServerScriptClose(sts);
-                TEST_ERROR_FMT(
+                TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("missing7"), .ignoreMissing = true)), ProtocolError,
-                    "HTTP request failed with 400:\n"
-                    "*** Path/Query ***:\n"
-                    "POST /v1/token\n"
-                    "*** Request Headers ***:\n"
-                    "content-length: %zu\n"
-                    "content-type: application/x-www-form-urlencoded\n"
-                    "host: %s",
-                    strlen(rotatedContent), strZ(hrnServerHost()));
+                    "unable to get authentication token: HTTP request failed with 400; response redacted");
 
                 // Write-mode storage requests the read_write scope
                 const char *const writeContent =
-                    "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&"
                     "audience=%2F%2Fiam.googleapis.com%2Fprojects%2F123%2Flocations%2Fglobal%2FworkloadIdentityPools%2Fpool%2F"
                     "providers%2Fprovider&"
+                    "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Atoken-exchange&"
                     "requested_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Aaccess_token&"
+                    "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_write&"
                     "subject_token=rotated%20jwt&"
-                    "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt&"
-                    "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdevstorage.read_write";
+                    "subject_token_type=urn%3Aietf%3Aparams%3Aoauth%3Atoken-type%3Ajwt";
 
                 hrnServerScriptAccept(sts);
                 testRequestP(
@@ -715,6 +720,7 @@ testRun(void)
 
                 // Generate the auth request
                 const String *const authRequest = testAuthRequest(storage);
+                const size_t authContentSize = strlen(strstr(strZ(authRequest), "\r\n\r\n") + 4);
 
                 // -----------------------------------------------------------------------------------------------------------------
                 TEST_TITLE("create bucket");
@@ -748,6 +754,71 @@ testRun(void)
                 TEST_ERROR(
                     storageGetP(storageNewReadP(storage, STRDEF("fi&le.txt"), .ignoreMissing = true)), ProtocolError,
                     "unable to get authentication token: [error] description");
+
+                // Invalid or missing descriptions retain the standard flat-error format
+                hrnServerScriptAccept(auth);
+                hrnServerScriptExpect(auth, authRequest);
+                testResponseP(auth, .content = "{\"error\":\"error\",\"error_description\":{}}");
+                hrnServerScriptClose(auth);
+
+                TEST_ERROR(
+                    storageGetP(storageNewReadP(storage, STRDEF("fi&le.txt"), .ignoreMissing = true)), ProtocolError,
+                    "unable to get authentication token: [error] null");
+
+                hrnServerScriptAccept(auth);
+                hrnServerScriptExpect(auth, authRequest);
+                testResponseP(auth, .content = "{\"error\":\"error\"}");
+                hrnServerScriptClose(auth);
+
+                TEST_ERROR(
+                    storageGetP(storageNewReadP(storage, STRDEF("fi&le.txt"), .ignoreMissing = true)), ProtocolError,
+                    "unable to get authentication token: [error] null");
+
+                // Nested JSON errors retain the full response for non-Web-ID authentication
+                hrnServerScriptAccept(auth);
+                hrnServerScriptExpect(auth, authRequest);
+                testResponseP(
+                    auth, .code = 403, .header = "content-type:application/json",
+                    .content = "{\"error\":{\"code\":403,\"message\":\"api disabled\"}}");
+                hrnServerScriptClose(auth);
+
+                TEST_ERROR_FMT(
+                    storageGetP(storageNewReadP(storage, STRDEF("fi&le.txt"), .ignoreMissing = true)), ProtocolError,
+                    "HTTP request failed with 403 (Forbidden):\n"
+                    "*** Path/Query ***:\n"
+                    "POST /token\n"
+                    "*** Request Headers ***:\n"
+                    "content-length: %zu\n"
+                    "content-type: application/x-www-form-urlencoded\n"
+                    "host: %s\n"
+                    "*** Response Headers ***:\n"
+                    "content-length: 47\n"
+                    "content-type: application/json\n"
+                    "*** Response Content ***:\n"
+                    "{\"error\":{\"code\":403,\"message\":\"api disabled\"}}",
+                    authContentSize, strZ(hrnServerHost()));
+
+                // Non-JSON errors also retain the full response for non-Web-ID authentication
+                hrnServerScriptAccept(auth);
+                hrnServerScriptExpect(auth, authRequest);
+                testResponseP(auth, .code = 400, .header = "content-type:text/html", .content = "<html>error</html>");
+                hrnServerScriptClose(auth);
+
+                TEST_ERROR_FMT(
+                    storageGetP(storageNewReadP(storage, STRDEF("fi&le.txt"), .ignoreMissing = true)), ProtocolError,
+                    "HTTP request failed with 400:\n"
+                    "*** Path/Query ***:\n"
+                    "POST /token\n"
+                    "*** Request Headers ***:\n"
+                    "content-length: %zu\n"
+                    "content-type: application/x-www-form-urlencoded\n"
+                    "host: %s\n"
+                    "*** Response Headers ***:\n"
+                    "content-length: 18\n"
+                    "content-type: text/html\n"
+                    "*** Response Content ***:\n"
+                    "<html>error</html>",
+                    authContentSize, strZ(hrnServerHost()));
 
                 // -----------------------------------------------------------------------------------------------------------------
                 TEST_TITLE("ignore missing file");
