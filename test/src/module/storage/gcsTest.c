@@ -369,6 +369,12 @@ testRun(void)
         HRN_STORAGE_PUT_Z(
             storageTest, TEST_PATH "/credential.json",
             "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
+            "\"credential_source\":{\"file\":\"/token\",\"format\":{\"type\":123}}}");
+        TEST_ERROR(storageRepoGet(0, false), FormatError, "credential source format is not supported");
+
+        HRN_STORAGE_PUT_Z(
+            storageTest, TEST_PATH "/credential.json",
+            "{\"type\":\"external_account\",\"audience\":\"aud\",\"token_url\":\"https://localhost:12345/v1/token\","
             "\"credential_source\":{\"file\":\"/token\"}}");
         TEST_ASSIGN(storage, storageRepoGet(0, false), "valid credential file");
 
